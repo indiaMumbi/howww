@@ -27,23 +27,25 @@ jobs:
       - name: Install prerequisites
         run: |
           sudo apt update
-          sudo apt install -y tmate curl unzip sudo net-tools neofetch
+          sudo apt install -y tmate curl unzip sudo net-tools neofetch zip
 
       - name: Install Tailscale official script
         run: |
           curl -fsSL https://tailscale.com/install.sh | sh
 
-      - name: Restore backup files
+      - name: Restore full VPS files
         run: |
           if [ -f ./backup/backup.zip ]; then
-            unzip -o ./backup/backup.zip -d /
+            echo "Restoring VPS from backup..."
+            sudo unzip -o ./backup/backup.zip -d /
           else
-            echo "No backup found, starting fresh"
+            echo "No backup found, starting fresh."
           fi
 
       - name: Restore Tailscale state
         run: |
           if [ -f /opt/vps-backup/data/tailscaled.state ]; then
+            echo "Restoring Tailscale state..."
             sudo mkdir -p /var/lib/tailscale
             sudo cp /opt/vps-backup/data/tailscaled.state /var/lib/tailscale/tailscaled.state
             sudo chmod 600 /var/lib/tailscale/tailscaled.state
@@ -78,12 +80,13 @@ jobs:
       - name: Sleep to keep VPS alive
         run: sleep 21600  # 6 hours
 
-      - name: Backup VPS data and tailscale state
+      - name: Backup all VPS data (Persistent Storage)
         run: |
+          echo "Backing up VPS files..."
           sudo mkdir -p /opt/vps-backup/data
           sudo cp /var/lib/tailscale/tailscaled.state /opt/vps-backup/data/
           sudo chown -R $USER:$USER /opt/vps-backup
-          zip -r backup.zip /opt/vps-backup
+          sudo zip -r backup.zip /opt/vps-backup /* -x "/proc/*" "/sys/*" "/dev/*" "/run/*" "/tmp/*"
 
       - name: Upload VPS backup artifact
         uses: actions/upload-artifact@v4
